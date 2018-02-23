@@ -8,6 +8,9 @@
 #include <unistd.h>
 #define Sleep(msec) usleep((msec) * 1000)
 
+const char const *color[] = { "?", "BLACK", "BLUE", "GREEN", "YELLOW", "RED", "WHITE", "BROWN" };
+#define COLOR_COUNT  (( int )( sizeof( color ) / sizeof( color[ 0 ])))
+
 int main(int argc, char** argv)
 {
 	char s[256];
@@ -49,16 +52,10 @@ int main(int argc, char** argv)
             }
             printf( "\r(%s)", color[ val ]);
             fflush( stdout );
-            if ( _check_pressed( sn_touch )) break;
-            Sleep( 200 );
-            printf( "\r        " );
-            fflush( stdout );
-            if ( _check_pressed( sn_touch )) break;
-            Sleep( 200 );
+
         }
     } else {
         printf( "COLOR sensor is NOT found\n" );
-        while ( !_check_pressed( sn_touch )) Sleep( 100 );
     }
 
     ev3_uninit();
