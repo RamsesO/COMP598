@@ -39,7 +39,7 @@ static bool _run_forever(uint8_t sn_l_motor, uint8_t sn_r_motor)
 {
     get_tacho_max_speed( sn_l_motor, &max_speed );
     set_tacho_speed_sp(sn_l_motor,max_speed);
-    set_tacho_speed_sp(sn_r_motor,max_speed);
+    set_tacho_speed_sp(sn_r_motor,-max_speed);
     set_tacho_command_inx( sn_l_motor,TACHO_RUN_FOREVER );
     set_tacho_command_inx( sn_r_motor,TACHO_RUN_FOREVER );    
 }
