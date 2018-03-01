@@ -20,11 +20,11 @@
 #define R_MOTOR_EXT_PORT  EV3_PORT__NONE_
 #define SPEED_LINEAR      75 
 #define SPEED_CIRCULAR    50 
-#define RADIUS            8 //inches should we use metric ?
+#define CIRCLE_RADIUS     203.2 // metric milimeters 
+#define TIRE_RADIUS       21.6 // diameter is 43.2
 
 int max_speed;  /* Motor maximal speed */
 
-#define DEGREE_TO_COUNT(d) ((d) * 260 / 90);
 
 int app_alive;
 int mode;
@@ -98,9 +98,26 @@ static double _theta(int x /*chord length*/)
 {
     double pi = 3.141592;
     double convert = 180/pi;
-    double val = acos( (x/ (2*RADIUS) ) );
+    double val = acos( (x/ (2*CIRCLE_RADIUS) ) );
     val = val*convert;
     return val; // law of cosine calculation creds to ram
+}
+
+//tires are 43.2 mm by 22 mm  meaning radius of  
+//converts degrees into distance metrics.
+static double _distance_travled( int start, int end_degrees_rotated)
+{
+    double total_degrees = start - end_degrees_rotated;
+    double distance = TIRE_RADIUS * (total_degrees/360);
+    return distance;
+}
+
+//must return an integer since tachometers only take integers
+static int _distance_to_degrees(double distance)
+{
+    double temp = (distance / TIRE_RADIUS)*360;
+    int degrees = (int)round(temp);
+    return degrees;
 }
 
 int app_init( void )
@@ -146,6 +163,7 @@ CORO_CONTEXT( turn );
 CORO_CONTEXT( handle_touch );
 CORO_CONTEXT( handle_color);
 CORO_CONTEXT( drive );
+CORO_CONTEXT( measure_distance);
 
 
 CORO_DEFINE( handle_touch )
@@ -170,23 +188,41 @@ CORO_DEFINE( handle_touch )
 
 CORO_DEFINE( handle_color)
 {
-    CORO_LOCAL int val;
+    CORO_LOCAL int color_val;
     CORO_BEGIN();
     set_sensor_mode( sn_color, "COL-COLOR" );
         for ( ; ; ) {
-            if ( !get_sensor_value( 0, sn_color, &val ) || ( val < 0 ) ) 
+           
+            if ( !get_sensor_value( 0, sn_color, &color_val ) || ( color_val < 0 ) ) 
             {
-                val = 0;
+                color_val = 0;
             }
-            if (val == 0)
+            if (color_val == 0)
             {
-                printf( "hi \n" );
-            }else{
+                CORO_CALL(measure_distance);
             }
             CORO_YIELD();
         }
             
 
+    CORO_END();
+}
+
+CORO_DEFINE(measure_distance)
+{
+    CORO_LOCAL int l_travled, r_travled;
+    CORO_BEGIN();
+    int l_pos,l_pos_end; 
+    int r_pos,r_pos_end;
+    get_tacho_postion(motor[L],&l_pos);
+    get_tacho_postion(motor[R],&r_pos);
+    for( ; ; ){
+        CORO_WAIT(l_travled != 1);
+        get_tacho_postion( motor[L], &l_pos_end);
+        get_tacho_postion( motor[R], &r_pos_end);
+        l_travled = l_pos_end;
+        r_travled = r_pos_end;
+    }
     CORO_END();
 }
 
@@ -220,7 +256,6 @@ CORO_DEFINE( drive )
             command = moving = MOVE_NONE;
         }
     }
-    CORO_END();
 }
 
 int main( void )
@@ -232,11 +267,14 @@ int main( void )
     ev3_tacho_init();
     app_alive=app_init();
     while(app_alive){
-        CORO_CALL( handle_touch );
-        CORO_CALL( drive );
-        CORO_CALL( handle_color);
-        // if ( _check_pressed( sn_touch )) break;
-        // Sleep( 200 );
+        int test;
+        get_tacho_postion(motor[L],test);
+        printf("%d\n",test );
+        // CORO_CALL( handle_touch );
+        // CORO_CALL( drive );
+        // CORO_CALL( handle_color);
+        if ( _check_pressed( sn_touch )) break;
+        Sleep( 200 );
     }   
     return(0);
 }
