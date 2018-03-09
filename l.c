@@ -5,6 +5,8 @@
 #include "ev3_sensor.h"
 #include "ev3_tacho.h"
 #include <math.h>
+#include <time.h>
+#include <stdlib.h>
 // WIN32 /////////////////////////////////////////
 #ifdef __WIN32__
 #include <windows.h>
@@ -18,12 +20,14 @@
 #define L_MOTOR_EXT_PORT  EV3_PORT__NONE_
 #define R_MOTOR_PORT      OUTPUT_B
 #define R_MOTOR_EXT_PORT  EV3_PORT__NONE_
-#define SPEED_LINEAR      75 
-#define SPEED_CIRCULAR    50 
-#define CIRCLE_RADIUS     203.2 // metric milimeters 
+#define SPEED_LINEAR      75
+#define SPEED_CIRCULAR    50
+#define CIRCLE_RADIUS     203.2 // metric milimeters
 #define TIRE_RADIUS       21.6 // diameter is 43.2
 
 int max_speed;  /* Motor maximal speed */
+int is_button_pressed = 0;
+int color_value = 0;
 
 
 int app_alive;
@@ -33,7 +37,7 @@ enum{
     MOVE_FORWARD,
     MOVE_BACKWARD, // instead of moving towards circle we can move backwards
     TURN_ANGLE,
-    TURN_LEFT,
+    TURN,
     STEP_BACKWARD,
     STEP_FORWARD,
 };
@@ -44,7 +48,7 @@ int angle;
 
 uint8_t sn_touch, sn_color;
 // to use multi set you need array of motors followed by set of desc limit
-enum{ L,R}; // use this to set indicies of motor 
+enum{ L,R}; // use this to set indicies of motor
 uint8_t motor[ 3 ] = {DESC_LIMIT,DESC_LIMIT,DESC_LIMIT};
 
 static bool _check_pressed( uint8_t sn )
@@ -77,6 +81,64 @@ static void _run_to_rel_pos( int l_speed, int l_pos, int r_speed, int r_pos )
     multi_set_tacho_command_inx( motor, TACHO_RUN_TO_REL_POS );
 }
 
+//Code to turn the vehicle using wheel rotations
+//Positive turns left, negative turns right
+int turn_vehicle(int motor_speed, int number_of_rotations){
+
+    //Get encoder counts for both wheels
+    int encoder_count[2];
+    get_tacho_position(motor[L], &encoder_count[L]);
+    get_tacho_position(motor[R], &encoder_count[R]);
+
+    //Give one motor more power than the other to turn
+    //Turning right
+    if(number_of_rotations < 0){
+        set_tacho_speed_sp(motor[L], motor_speed);
+        set_tacho_speed_sp(motor[R], -motor_speed);
+    }
+    //Turning left
+    else {
+        set_tacho_speed_sp(motor[R], motor_speed);
+        set_tacho_speed_sp(motor[L], -motor_speed);
+    }
+
+    //ORder the motors turn run until...
+    multi_set_tacho_command_inx(motor, TACHO_RUN_FOREVER);
+
+    printf("I am in here\n");
+    //Get the inital reference for encoders
+    int initial_encoder_reading_L = encoder_count[L];
+    int initial_encoder_reading_R = encoder_count[R];
+    //If the user requests a rotation
+    if (number_of_rotations < 0) {
+        //Turn left
+        //Loop until the encoder counts have matched up
+        while(encoder_count[L] > (initial_encoder_reading_L - (360 * number_of_rotations)) && !is_button_pressed && color_value != 1){
+            get_tacho_position(motor[L], &encoder_count[L]);
+            if(!get_sensor_value(0, sn_color, &color_value)){
+                color_value = 0;
+            }
+            if(_check_pressed(sn_touch)){
+                is_button_pressed = 1;
+            }
+        }
+    } else {
+        //Turn right
+        //Loop until the couner counts are less than the inital reading
+        while(encoder_count[R] < initial_encoder_reading_R + (360 * number_of_rotations) && !is_button_pressed && color_value != 1){
+            get_tacho_position(motor[R], &encoder_count[R]);
+             if(!get_sensor_value(0, sn_color, &color_value)){
+                color_value = 0;
+            }
+            if(_check_pressed(sn_touch)){
+                is_button_pressed = 1;
+            }
+        }
+    }
+
+    multi_set_tacho_command_inx(motor, TACHO_STOP);
+}
+
 static int _is_running( void )
 {
     FLAGS_T state = TACHO_STATE__NONE_;
@@ -93,7 +155,7 @@ static void _stop( void )
 }
 
 
-// returns degrees 
+// returns degrees
 static double _theta(int x /*chord length*/)
 {
     double pi = 3.141592;
@@ -103,7 +165,7 @@ static double _theta(int x /*chord length*/)
     return val; // law of cosine calculation creds to ram
 }
 
-//tires are 43.2 mm by 22 mm  meaning radius of  
+//tires are 43.2 mm by 22 mm  meaning radius of
 //converts degrees into distance metrics.
 static double _distance_travled( int start, int end_degrees_rotated)
 {
@@ -172,9 +234,9 @@ CORO_DEFINE( handle_touch )
     CORO_BEGIN();
     if ( sn_touch == DESC_LIMIT ) CORO_QUIT();
     for ( ; ; ) {
-        // Waiting the button is pressed  
+        // Waiting the button is pressed
         CORO_WAIT( get_sensor_value( 0, sn_touch, &val ) && ( val ));
-        // Stop the vehicle 
+        // Stop the vehicle
         if (command == MOVE_BACKWARD)
         {
             command = MOVE_FORWARD;
@@ -192,8 +254,8 @@ CORO_DEFINE( handle_color)
     CORO_BEGIN();
     set_sensor_mode( sn_color, "COL-COLOR" );
         for ( ; ; ) {
-           
-            if ( !get_sensor_value( 0, sn_color, &color_val ) || ( color_val < 0 ) ) 
+
+            if ( !get_sensor_value( 0, sn_color, &color_val ) || ( color_val < 0 ) )
             {
                 color_val = 0;
             }
@@ -203,7 +265,7 @@ CORO_DEFINE( handle_color)
             }
             CORO_YIELD();
         }
-            
+
 
     CORO_END();
 }
@@ -212,14 +274,14 @@ CORO_DEFINE(measure_distance)
 {
     CORO_LOCAL int l_travled, r_travled;
     CORO_BEGIN();
-    int l_pos,l_pos_end; 
+    int l_pos,l_pos_end;
     int r_pos,r_pos_end;
-    get_tacho_postion(motor[L],&l_pos);
-    get_tacho_postion(motor[R],&r_pos);
+    get_tacho_position(motor[L],&l_pos);
+    get_tacho_position(motor[R],&r_pos);
     for( ; ; ){
         CORO_WAIT(l_travled != 1);
-        get_tacho_postion( motor[L], &l_pos_end);
-        get_tacho_postion( motor[R], &r_pos_end);
+        get_tacho_position( motor[L], &l_pos_end);
+        get_tacho_position( motor[R], &r_pos_end);
         l_travled = l_pos_end;
         r_travled = r_pos_end;
     }
@@ -231,10 +293,10 @@ CORO_DEFINE( drive )
     CORO_LOCAL int speed_linear, speed_circular;
     CORO_LOCAL int _wait_stopped;
     CORO_BEGIN();
-    speed_linear = max_speed * SPEED_LINEAR / 100;
-    speed_circular = max_speed * SPEED_CIRCULAR / 100;
+    speed_linear = max_speed/2;
+    speed_circular = max_speed/2;
     for ( ; ; ) {
-        // /* Waiting new command 
+        // /* Waiting new command
         CORO_WAIT( moving != command );
         _wait_stopped = 0;
         switch ( command ) {
@@ -248,14 +310,25 @@ CORO_DEFINE( drive )
         case MOVE_BACKWARD:
             _run_forever( -speed_linear, -speed_linear );
             break;
+        case TURN:
+            turn_vehicle(speed_circular, 10);
         }
         moving = command;
         if ( _wait_stopped ) {
-            // Waiting the command is completed 
-            CORO_WAIT( !_is_running());
+            // Waiting the command is completed
+            //CORO_WAIT( !_is_running());
             command = moving = MOVE_NONE;
         }
     }
+}
+
+
+//Sets the motors to hold their position when ordered to stop.
+//This makes it hard to move the wheels
+void set_motor_variables(){
+    set_tacho_stop_action_inx(motor[L], TACHO_HOLD);
+    set_tacho_stop_action_inx(motor[R], TACHO_HOLD);
+    _stop();
 }
 
 int main( void )
@@ -266,15 +339,33 @@ int main( void )
     ev3_sensor_init();
     ev3_tacho_init();
     app_alive=app_init();
-    while(app_alive){
-        int test;
-        get_tacho_postion(motor[L],test);
-        printf("%d\n",test );
-        // CORO_CALL( handle_touch );
-        // CORO_CALL( drive );
-        // CORO_CALL( handle_color);
-        if ( _check_pressed( sn_touch )) break;
-        Sleep( 200 );
-    }   
+    set_motor_variables();
+    //command = TURN;
+    is_button_pressed = 0;
+    srand(time(NULL));
+    while(app_alive && color_value != 1){
+       set_tacho_speed_sp(motor[L], max_speed/2);
+       set_tacho_speed_sp(motor[R], max_speed/2);
+       multi_set_tacho_command_inx(motor, TACHO_RUN_FOREVER);
+       while(!is_button_pressed && color_value != 1){
+            if(_check_pressed(sn_touch)){
+                is_button_pressed = 1;
+            }
+            get_sensor_value(0, sn_color, &color_value);
+        }
+      multi_set_tacho_command_inx(motor, TACHO_STOP);
+      set_tacho_speed_sp(motor[L], -max_speed/2);
+      set_tacho_speed_sp(motor[R], -max_speed/2);
+      multi_set_tacho_command_inx(motor, TACHO_RUN_FOREVER);
+      Sleep(1000);
+      multi_set_tacho_command_inx(motor, TACHO_STOP);
+      is_button_pressed = 0;
+      if(color_value != 1){
+          turn_vehicle(max_speed/2, rand()%10);
+      }
+      is_button_pressed = 0;
+    }
+    command = MOVE_NONE;
+    CORO_CALL(drive);
     return(0);
 }
