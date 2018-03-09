@@ -25,6 +25,8 @@
 #define CIRCLE_RADIUS     203.2 // metric milimeters
 #define TIRE_RADIUS       21.6 // diameter is 43.2
 
+#define MAX_BLACK_RANGE 15
+
 int max_speed;  /* Motor maximal speed */
 int is_button_pressed = 0;
 int color_value = 0;
@@ -113,7 +115,7 @@ int turn_vehicle(int motor_speed, int number_of_rotations){
     if (number_of_rotations < 0) {
         //Turn left
         //Loop until the encoder counts have matched up
-        while(encoder_count[L] > (initial_encoder_reading_L - (360 * number_of_rotations)) && !is_button_pressed && color_value != 1){
+        while(encoder_count[L] > (initial_encoder_reading_L - (360 * number_of_rotations)) && !is_button_pressed && !withinColorRange(0,MAX_BLACK_RANGE)){
             get_tacho_position(motor[L], &encoder_count[L]);
             if(!get_sensor_value(0, sn_color, &color_value)){
                 color_value = 0;
@@ -125,7 +127,7 @@ int turn_vehicle(int motor_speed, int number_of_rotations){
     } else {
         //Turn right
         //Loop until the couner counts are less than the inital reading
-        while(encoder_count[R] < initial_encoder_reading_R + (360 * number_of_rotations) && !is_button_pressed && color_value != 1){
+        while(encoder_count[R] < initial_encoder_reading_R + (360 * number_of_rotations) && !is_button_pressed && !withinColorRange(0,MAX_BLACK_RANGE)){
             get_tacho_position(motor[R], &encoder_count[R]);
              if(!get_sensor_value(0, sn_color, &color_value)){
                 color_value = 0;
@@ -252,7 +254,7 @@ CORO_DEFINE( handle_color)
 {
     CORO_LOCAL int color_val;
     CORO_BEGIN();
-    set_sensor_mode( sn_color, "COL-COLOR" );
+    set_sensor_mode( sn_color, "COL-AMBIENT" );
         for ( ; ; ) {
 
             if ( !get_sensor_value( 0, sn_color, &color_val ) || ( color_val < 0 ) )
@@ -331,6 +333,14 @@ void set_motor_variables(){
     _stop();
 }
 
+bool withinColRange(int beg, int end)
+{
+    if(color_value >= beg && color_value <= end)
+        return true;
+    else
+        return false;
+}
+
 int main( void )
 {
     printf( "Waiting the EV3 brick online...\n" );
@@ -343,11 +353,11 @@ int main( void )
     //command = TURN;
     is_button_pressed = 0;
     srand(time(NULL));
-    while(app_alive && color_value != 1){
+    while(app_alive && !withinColorRange(0,MAX_BLACK_RANGE)){
        set_tacho_speed_sp(motor[L], max_speed/2);
        set_tacho_speed_sp(motor[R], max_speed/2);
        multi_set_tacho_command_inx(motor, TACHO_RUN_FOREVER);
-       while(!is_button_pressed && color_value != 1){
+       while(!is_button_pressed && !withinColorRange(0,MAX_BLACK_RANGE)){
             if(_check_pressed(sn_touch)){
                 is_button_pressed = 1;
             }
@@ -360,7 +370,7 @@ int main( void )
       Sleep(1000);
       multi_set_tacho_command_inx(motor, TACHO_STOP);
       is_button_pressed = 0;
-      if(color_value != 1){
+      if(!withinColorRange(0,MAX_BLACK_RANGE)){
           turn_vehicle(max_speed/2, rand()%10);
       }
       is_button_pressed = 0;
