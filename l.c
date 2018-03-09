@@ -115,7 +115,7 @@ int turn_vehicle(int motor_speed, int number_of_rotations){
     if (number_of_rotations < 0) {
         //Turn left
         //Loop until the encoder counts have matched up
-        while(encoder_count[L] > (initial_encoder_reading_L - (360 * number_of_rotations)) && !is_button_pressed && !withinColorRange(0,MAX_BLACK_RANGE)){
+        while(encoder_count[L] > (initial_encoder_reading_L - (360 * number_of_rotations)) && !is_button_pressed && !withinColRange(0,MAX_BLACK_RANGE)){
             get_tacho_position(motor[L], &encoder_count[L]);
             if(!get_sensor_value(0, sn_color, &color_value)){
                 color_value = 0;
@@ -127,7 +127,7 @@ int turn_vehicle(int motor_speed, int number_of_rotations){
     } else {
         //Turn right
         //Loop until the couner counts are less than the inital reading
-        while(encoder_count[R] < initial_encoder_reading_R + (360 * number_of_rotations) && !is_button_pressed && !withinColorRange(0,MAX_BLACK_RANGE)){
+        while(encoder_count[R] < initial_encoder_reading_R + (360 * number_of_rotations) && !is_button_pressed && !withinColRange(0,MAX_BLACK_RANGE)){
             get_tacho_position(motor[R], &encoder_count[R]);
              if(!get_sensor_value(0, sn_color, &color_value)){
                 color_value = 0;
@@ -353,11 +353,11 @@ int main( void )
     //command = TURN;
     is_button_pressed = 0;
     srand(time(NULL));
-    while(app_alive && !withinColorRange(0,MAX_BLACK_RANGE)){
+    while(app_alive && !withinColRange(0,MAX_BLACK_RANGE)){
        set_tacho_speed_sp(motor[L], max_speed/2);
        set_tacho_speed_sp(motor[R], max_speed/2);
        multi_set_tacho_command_inx(motor, TACHO_RUN_FOREVER);
-       while(!is_button_pressed && !withinColorRange(0,MAX_BLACK_RANGE)){
+       while(!is_button_pressed && !withinColRange(0,MAX_BLACK_RANGE)){
             if(_check_pressed(sn_touch)){
                 is_button_pressed = 1;
             }
@@ -370,7 +370,7 @@ int main( void )
       Sleep(1000);
       multi_set_tacho_command_inx(motor, TACHO_STOP);
       is_button_pressed = 0;
-      if(!withinColorRange(0,MAX_BLACK_RANGE)){
+      if(!withinColRange(0,MAX_BLACK_RANGE)){
           turn_vehicle(max_speed/2, rand()%10);
       }
       is_button_pressed = 0;
