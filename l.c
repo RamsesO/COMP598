@@ -53,6 +53,14 @@ uint8_t sn_touch, sn_color;
 enum{ L,R}; // use this to set indicies of motor
 uint8_t motor[ 3 ] = {DESC_LIMIT,DESC_LIMIT,DESC_LIMIT};
 
+static bool withinColRange(int beg, int end)
+{
+    if(color_value >= beg && color_value <= end)
+        return true;
+    else
+        return false;
+}
+
 static bool _check_pressed( uint8_t sn )
 {
     int val;
@@ -331,14 +339,6 @@ void set_motor_variables(){
     set_tacho_stop_action_inx(motor[L], TACHO_HOLD);
     set_tacho_stop_action_inx(motor[R], TACHO_HOLD);
     _stop();
-}
-
-bool withinColRange(int beg, int end)
-{
-    if(color_value >= beg && color_value <= end)
-        return true;
-    else
-        return false;
 }
 
 int main( void )
