@@ -24,12 +24,11 @@
 #define SPEED_CIRCULAR    50
 #define CIRCLE_RADIUS     203.2 // metric milimeters
 #define TIRE_RADIUS       21.6 // diameter is 43.2
-
-#define MAX_BLACK_RANGE 15
+#define MAX_BLACK_RANGE   15
 
 int max_speed;  /* Motor maximal speed */
 int is_button_pressed = 0;
-int color_value = 0;
+int color_value = 100;
 
 
 int app_alive;
@@ -262,7 +261,7 @@ CORO_DEFINE( handle_color)
 {
     CORO_LOCAL int color_val;
     CORO_BEGIN();
-    set_sensor_mode( sn_color, "COL-AMBIENT" );
+    set_sensor_mode( sn_color, "COL-REFLECT" );
         for ( ; ; ) {
 
             if ( !get_sensor_value( 0, sn_color, &color_val ) || ( color_val < 0 ) )
@@ -353,7 +352,7 @@ int main( void )
     //command = TURN;
     is_button_pressed = 0;
     srand(time(NULL));
-    while(app_alive && !withinColRange(0,MAX_BLACK_RANGE)){
+    while(app_alive){ //&& !withinColRange(0,MAX_BLACK_RANGE)){
        set_tacho_speed_sp(motor[L], max_speed/2);
        set_tacho_speed_sp(motor[R], max_speed/2);
        multi_set_tacho_command_inx(motor, TACHO_RUN_FOREVER);
@@ -363,19 +362,29 @@ int main( void )
             }
             get_sensor_value(0, sn_color, &color_value);
         }
-      multi_set_tacho_command_inx(motor, TACHO_STOP);
-      set_tacho_speed_sp(motor[L], -max_speed/2);
-      set_tacho_speed_sp(motor[R], -max_speed/2);
-      multi_set_tacho_command_inx(motor, TACHO_RUN_FOREVER);
-      Sleep(1000);
-      multi_set_tacho_command_inx(motor, TACHO_STOP);
-      is_button_pressed = 0;
-      if(!withinColRange(0,MAX_BLACK_RANGE)){
-          turn_vehicle(max_speed/2, rand()%10);
-      }
-      is_button_pressed = 0;
+       if(!withinColRange(0,MAX_BLACK_RANGE)){
+           multi_set_tacho_command_inx(motor, TACHO_STOP);
+           set_tacho_speed_sp(motor[L], -max_speed/2);
+           set_tacho_speed_sp(motor[R], -max_speed/2);
+           multi_set_tacho_command_inx(motor, TACHO_RUN_FOREVER);
+           Sleep(1000);
+           multi_set_tacho_command_inx(motor, TACHO_STOP);
+           is_button_pressed = 0;
+           turn_vehicle(max_speed/2, rand()%6);
+       } else {
+           set_tacho_speed_sp(motor[L], max_speed);
+           set_tacho_speed_sp(motor[R], max_speed);
+           multi_set_tacho_command_inx(motor, TACHO_RUN_FOREVER);
+           Sleep(200);
+           multi_set_tacho_command_inx(motor, TACHO_STOP);
+
+       }
+        while(withinColRange(0, MAX_BLACK_RANGE)){
+            multi_set_tacho_command_inx(motor, TACHO_STOP);
+            get_sensor_value(0, sn_color, &color_value);
+        }
+        is_button_pressed = 0;
     }
-    command = MOVE_NONE;
-    CORO_CALL(drive);
+    multi_set_tacho_command_inx(motor, TACHO_STOP);
     return(0);
 }
