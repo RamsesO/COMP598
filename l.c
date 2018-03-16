@@ -22,7 +22,7 @@
 //I do not know if this will work!
 #define L_TOUCH_SENSOR_PORT	  		OUTPUT_1 //<- is this a valid reference?
 #define L_TOUCH_SENSOR_EXT_PORT  	EV3_PORT__NONE_
-#define L_TOUCH_SENSOR_PORT   		OUTPUT_2
+#define R_TOUCH_SENSOR_PORT   		OUTPUT_2
 #define R_TOUCH_SENSOR_EXT_PORT   	EV3_PORT__NONE_
 #define SPEED_LINEAR      			75
 #define SPEED_CIRCULAR    			50
@@ -231,13 +231,11 @@ int app_init( void )
         //printf( " use the TOUCH sensor.\n" );
     } else {
         sn_touch = DESC_LIMIT;
-        printf( "LEFT touch sensor (%s) not found.\n", ev3_port_name( L_TOUCH_SENSOR_PORT, L_TOUCH_SENSOR_EXT_PORT, 0, s ));
     }
 	if ( ev3_search_sensor_plugged_in(L_TOUCH_SENSOR_PORT, L_TOUCH_SENSOR_EXT_PORT, touch_sensor + L, 0 )) {
         //printf( " use the TOUCH sensor.\n" );
     } else {
         sn_touch = DESC_LIMIT;
-        printf( "RIGHT touch sensor (%s) not found.\n", ev3_port_name( R_TOUCH_SENSOR_PORT, R_TOUCH_SENSOR_EXT_PORT, 0, s ));
     }
     return ( 1 );
 }
