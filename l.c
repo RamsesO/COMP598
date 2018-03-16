@@ -132,7 +132,7 @@ int turn_vehicle(int motor_speed, int number_of_rotations){
             if(!get_sensor_value(0, sn_color, &color_value)){
                 color_value = 0;
             }
-            if(_check_pressed(touch_sensor[L]) || _check_pressed(touch_sensor[R]){
+            if(_check_pressed(touch_sensor[L]) || _check_pressed(touch_sensor[R])){
                 is_button_pressed = 1;
             }
         }
@@ -144,7 +144,7 @@ int turn_vehicle(int motor_speed, int number_of_rotations){
              if(!get_sensor_value(0, sn_color, &color_value)){
                 color_value = 0;
             }
-            if(_check_pressed(touch_sensor[L]) || _check_pressed(touch_sensor[R]){
+            if(_check_pressed(touch_sensor[L]) || _check_pressed(touch_sensor[R])){
                 is_button_pressed = 1;
             }
         }
@@ -241,7 +241,6 @@ int app_init( void )
     }
     return ( 1 );
 }
-}
 
 
 //Sets the motors to hold their position when ordered to stop.
@@ -280,7 +279,7 @@ int main( void )
 		//The color sensor detects a black object
         while(!is_button_pressed && !withinColRange(0,MAX_BLACK_RANGE)){
 			//Check that either touch sensor has been activated
-            if(_check_pressed(touch_sensor[L]) || _check_pressed(touch_sensor[R]){
+            if(_check_pressed(touch_sensor[L]) || _check_pressed(touch_sensor[R])){
                 is_button_pressed = 1;
             }
 			//Get new color value
