@@ -20,7 +20,7 @@
 #define R_MOTOR_PORT      			OUTPUT_B
 #define R_MOTOR_EXT_PORT  			EV3_PORT__NONE_
 //I do not know if this will work!
-#define L_TOUCH_SENSOR_PORT	  		OUTPUT_1 //<- is this a valid reference?
+#define L_TOUCH_SENSOR_PORT	  		INPUT_1 //<- is this a valid reference?
 #define L_TOUCH_SENSOR_EXT_PORT  	EV3_PORT__NONE_
 #define R_TOUCH_SENSOR_PORT   		OUTPUT_2
 #define R_TOUCH_SENSOR_EXT_PORT   	EV3_PORT__NONE_
