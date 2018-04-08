@@ -20,10 +20,10 @@
 #define R_MOTOR_PORT      			OUTPUT_B
 #define R_MOTOR_EXT_PORT  			EV3_PORT__NONE_
 //I do not know if this will work!
-#define L_TOUCH_SENSOR_PORT	  		INPUT_1 //<- is this a valid reference?
-#define L_TOUCH_SENSOR_EXT_PORT  	EV3_PORT__NONE_
-#define R_TOUCH_SENSOR_PORT   		OUTPUT_2
-#define R_TOUCH_SENSOR_EXT_PORT   	EV3_PORT__NONE_
+#define L_TOUCH_SENSOR_PORT	  		INPUT_1 
+#define L_TOUCH_SENSOR_EXT_PORT  	        EV3_PORT__NONE_
+#define R_TOUCH_SENSOR_PORT   		        INPUT_2
+#define R_TOUCH_SENSOR_EXT_PORT   	        EV3_PORT__NONE_
 #define SPEED_LINEAR      			75
 #define SPEED_CIRCULAR    			50
 #define CIRCLE_RADIUS     			203.2 // metric millimeters
@@ -98,7 +98,7 @@ static void _run_to_rel_pos( int l_speed, int l_pos, int r_speed, int r_pos )
 //Code to turn the vehicle using wheel rotations
 //Positive turns left, negative turns right
 int turn_vehicle(int motor_speed, int number_of_rotations){
-
+    is_button_pressed = 0;
     //Get encoder counts for both wheels
     int encoder_count[2];
     get_tacho_position(motor[L], &encoder_count[L]);
@@ -128,11 +128,10 @@ int turn_vehicle(int motor_speed, int number_of_rotations){
         //Turn left
         //Loop until the encoder counts have matched up
         while(encoder_count[L] > (initial_encoder_reading_L - (360 * number_of_rotations)) && !is_button_pressed && !withinColRange(0,MAX_BLACK_RANGE)){
-            get_tacho_position(motor[L], &encoder_count[L]);
-            if(!get_sensor_value(0, sn_color, &color_value)){
-                color_value = 0;
-            }
+            get_tacho_position(motor[L], &encoder_count[L]); 
+            get_sensor_value(0, sn_color, &color_value);
             if(_check_pressed(touch_sensor[L]) || _check_pressed(touch_sensor[R])){
+                printf("Button pressed\n");
                 is_button_pressed = 1;
             }
         }
@@ -140,10 +139,8 @@ int turn_vehicle(int motor_speed, int number_of_rotations){
         //Turn right
         //Loop until the counter is less than the initial reading
         while(encoder_count[R] < initial_encoder_reading_R + (360 * number_of_rotations) && !is_button_pressed && !withinColRange(0,MAX_BLACK_RANGE)){
-            get_tacho_position(motor[R], &encoder_count[R]);
-             if(!get_sensor_value(0, sn_color, &color_value)){
-                color_value = 0;
-            }
+            get_tacho_position(motor[R], &encoder_count[R]);       
+            get_sensor_value(0, sn_color, &color_value);
             if(_check_pressed(touch_sensor[L]) || _check_pressed(touch_sensor[R])){
                 is_button_pressed = 1;
             }
@@ -231,11 +228,14 @@ int app_init( void )
         //printf( " use the TOUCH sensor.\n" );
     } else {
         sn_touch = DESC_LIMIT;
+        printf("Right touch sensor not found\n");
     }
-	if ( ev3_search_sensor_plugged_in(L_TOUCH_SENSOR_PORT, L_TOUCH_SENSOR_EXT_PORT, touch_sensor + L, 0 )) {
+
+    if ( ev3_search_sensor_plugged_in(R_TOUCH_SENSOR_PORT, R_TOUCH_SENSOR_EXT_PORT, touch_sensor + R, 0 )) {
         //printf( " use the TOUCH sensor.\n" );
     } else {
         sn_touch = DESC_LIMIT;
+	printf("Left touch sensor not found\n");
     }
     return ( 1 );
 }
@@ -279,11 +279,12 @@ int main( void )
 			//Check that either touch sensor has been activated
             if(_check_pressed(touch_sensor[L]) || _check_pressed(touch_sensor[R])){
                 is_button_pressed = 1;
+                printf("Button Pressed\n");
             }
 			//Get new color value
             get_sensor_value(0, sn_color, &color_value);
         }
-		
+
 		//If the color currently detected is not within the black threshold
 		//activate the backup and random turning sequence
         if(!withinColRange(0,MAX_BLACK_RANGE)){
@@ -298,12 +299,12 @@ int main( void )
 			//Order the motors to stop
             multi_set_tacho_command_inx(motor, TACHO_STOP);
 			//randomly turn from 2 - 6 wheel rotations
-            turn_vehicle(max_speed/2, rand()%4 + 2);
+            turn_vehicle(max_speed/2, (rand()%4) + 2);
 		
 		//If we left the loop we are in range we see black
 		//At this point we go full speed for a short while to push others off and stop
         } else {
-			//Set full speed and drive forward
+		//Set full speed and drive forward
             set_tacho_speed_sp(motor[L], max_speed);
             set_tacho_speed_sp(motor[R], max_speed);
             multi_set_tacho_command_inx(motor, TACHO_RUN_FOREVER);
